@@ -8,25 +8,13 @@ export LANG=en_US.UTF-8
 # Author: Igor Cervenka
 # ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# modified from https://umi-tools.readthedocs.io/en/latest/QUICK_START.html#
-# dependencies
-# - STAR aligner
-# - samtools
-# - fsubread package
-# - UMI tools
-# - genome and annotation files
-# - cutadapt
-# - bbtools (optionally)
-# ------------------------------------------------------------------------------
-
-# help string
+# help string ------------------------------------------------------------------
 USAGE=" $(basename "$0") [-h] [-i input] [-o output] [-x index] [-g gtf]
 Script to process of sciRNASeq datasets
 
 arguments:
--i  input folder where fastq files are located. Script assumes naming convention
-    *R1.fastq.gz and *R2.fastq.gz, where UMI + barcodes are stored in R1 file\n
+-i input folder where fastq files are located. Script assumes naming convention
+    *R1.fastq.gz and *R2.fastq.gz, where UMI + barcodes are stored in R1 file
 -o  output folder where to place the results
 -x  location of genome index file for STAR aligner
 -g  GTF file for genome used
@@ -40,15 +28,105 @@ if [ $# == 0 ] ; then
     exit 1;
 fi
 
-# create genome index for STAR, replace paths with actual paths to fasta and gtf files
-# change the overhang to read length -1
+while getopts "i:o:x:g:h" optname
+  do
+    case "$optname" in
+      "i")
+        INPUT=$OPTARG
+        ;;
+      "o")
+        OUTPUT=$OPTARG
+        ;;
+      "x")
+        INDEX=$OPTARG
+        ;;
+      "g")
+        GTF=$OPTARG
+        ;;
+      "h")
+        echo "$USAGE"
+        exit 0;
+        ;;
+      "?")
+        echo "Unknown option $OPTARG"
+        exit 1;
+        ;;
+      ":")
+        echo "No argument value for option $OPTARG"
+        exit 1;
+        ;;
+      *)
+        echo "Unknown error while processing options"
+        exit 1;
+        ;;
+    esac
+  done
+
+  # ------------------------------------------------------------------------------
+  # modified from https://umi-tools.readthedocs.io/en/latest/QUICK_START.html#
+  # dependencies
+  # - STAR aligner
+  # - samtools
+  # - fsubread package
+  # - UMI tools
+  # - genome and annotation files
+  # - cutadapt
+  # - bbtools (optionally)
+  # ------------------------------------------------------------------------------
+  if ! command -v STAR &> /dev/null
+  then
+      echo "STAR could not be found, exiting."
+      exit 2;
+  fi
+
+  if ! command -v samtools &> /dev/null
+  then
+      echo "Samtools could not be found, exiting."
+      exit 2;
+  fi
+
+  if ! command -v featurCounts &> /dev/null
+  then
+      echo "featurCounts could not be found, exiting."
+      exit 2;
+  fi
+
+  if ! command -v cutadapt &> /dev/null
+  then
+      echo "Cutadapt could not be found, exiting."
+      exit 2;
+  fi
+
+  if ! command -v umi_tools &> /dev/null
+  then
+      echo "Umi-tools could not be found, exiting."
+      exit 2;
+  fi
+
+  if ! command -v pigz &> /dev/null
+  then
+      echo "pigz could not be found, exiting."
+      exit 2;
+  fi
+
+# ------------------------------------------------------------------------------
+# Processing data
+# ------------------------------------------------------------------------------
+
+# creating of the index is out of scope for this script, following code can be
+# used to generate index in case it is missing
+# INDEX="__index_output_directory__"
+# FASTA="__genome_fasta_file__"
+# GTF="__gtf_file__"
+# L="__read_length_minus_one__"
+#
 # STAR \
 # --runThreadN 16 \
 # --runMode genomeGenerate \
-# --genomeDir /shared/genome/ncbi_grcm38/star \
-# --genomeFastaFiles /shared/genome/ncbi_grcm38/fasta/ncbi_grcm38.fa \
-# --sjdbGTFfile /shared/genome/ncbi_grcm38/annotation/ncbi_grcm38.gtf \
-# --sjdbOverhang 49;
+# --genomeDir $INDEX \
+# --genomeFastaFiles  $FASTA \
+# --sjdbGTFfile $GTF \
+# --sjdbOverhang $L;
 
 # this part is done if there are too many fastq files (I had 960).
 # You pool all the fastq files into one so it makes the processing easier,
@@ -123,7 +201,14 @@ rm -f R2_reads_extracted_1.fastq;
 
 # split mouse and human reads to see the proportions
 # in the end I aligned all the reads, since there were too few mouse specific ones
-# bbsplit.sh -Xmx60g minid=0.76 maxindel=16k minhits=1 ambig2=split in=R2_reads_extracted_2.fastq ref=/shared/genome/GRCm38/fasta/GRCm38.fa,/shared/genome/GRCh38/fasta/GRCh38.fa basename=out_%.fastq
+# bbsplit.sh -Xmx60g \
+#   minid=0.76 \
+#   maxindel=16k \
+#   minhits=1 \
+#   ambig2=split \
+#   in=R2_reads_extracted_2.fastq \
+#   ref=/shared/genome/GRCm38/fasta/GRCm38.fa,/shared/genome/GRCh38/fasta/GRCh38.fa \
+#   basename=out_%.fastq
 
 # compress to save space
 pigz --best -p 16  R2_reads_extracted_2.fastq;
