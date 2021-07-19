@@ -1,6 +1,0 @@
-file	barcode
-*R2.fastq.gz	AGGGG
-file	barcode
-*R2.fastq.gz	AGGGG
-file	barcode
-*R2.fastq.gz	AGGGG

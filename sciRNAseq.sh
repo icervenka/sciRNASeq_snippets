@@ -183,7 +183,7 @@ umi_tools extract --bc-pattern=NNNNNNNNCCCCCCCCCC \
                   --read2-in R2_reads_mod_fil.fastq.gz \
                   --read2-out=R2_reads_extracted.fastq.gz \
                   --filter-cell-barcode \
-                  --whitelist=whitelist_true.txt;
+                  --whitelist=whitelist.txt;
 
 # this changes the names of fastq reads to concatenate the artificial into the RT read barcode
 # that will be 'demultiplexed' later in R during analysis
