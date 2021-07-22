@@ -7,6 +7,11 @@ export LANG=en_US.UTF-8
 # Title: Processing of sciRNASeq data
 # Author: Igor Cervenka
 # ------------------------------------------------------------------------------
+# Notes:
+# I tried to use reaper for demultiplexing of barcodes, but the output
+# was quite difficult to work with, abandoned in favour of umi_tools with
+# automated whitelist generation.
+# ------------------------------------------------------------------------------
 
 # help string ------------------------------------------------------------------
 USAGE=" $(basename "$0") [-h] [-i input] [-o output] [-x index] [-g gtf]
@@ -62,52 +67,29 @@ while getopts "i:o:x:g:h" optname
     esac
   done
 
-  # ------------------------------------------------------------------------------
-  # modified from https://umi-tools.readthedocs.io/en/latest/QUICK_START.html#
-  # dependencies
-  # - STAR aligner
-  # - samtools
-  # - fsubread package
-  # - UMI tools
-  # - genome and annotation files
-  # - cutadapt
-  # - bbtools (optionally)
-  # ------------------------------------------------------------------------------
-  if ! command -v STAR &> /dev/null
-  then
-      echo "STAR could not be found, exiting."
-      exit 2;
-  fi
+# ------------------------------------------------------------------------------
+# modified from https://umi-tools.readthedocs.io/en/latest/QUICK_START.html#
+# dependencies
+# - STAR aligner
+# - samtools
+# - fsubread package
+# - UMI tools
+# - genome and annotation files
+# - cutadapt
+# - bbtools (optionally)
+# ------------------------------------------------------------------------------
 
-  if ! command -v samtools &> /dev/null
-  then
-      echo "Samtools could not be found, exiting."
-      exit 2;
-  fi
+# check if all dependencies are available otherwise exit with code 2
+dependencies=(STAR samtools featureCounts cutadapt umi_tools pigz)
 
-  if ! command -v featurCounts &> /dev/null
+for ((i=0; i<${#dependencies[@]}; i++))
+do
+  if ! command -v ${dependencies[$i]} &> /dev/null
   then
-      echo "featurCounts could not be found, exiting."
+      echo "${dependencies[$i]} could not be found, exiting."
       exit 2;
   fi
-
-  if ! command -v cutadapt &> /dev/null
-  then
-      echo "Cutadapt could not be found, exiting."
-      exit 2;
-  fi
-
-  if ! command -v umi_tools &> /dev/null
-  then
-      echo "Umi-tools could not be found, exiting."
-      exit 2;
-  fi
-
-  if ! command -v pigz &> /dev/null
-  then
-      echo "pigz could not be found, exiting."
-      exit 2;
-  fi
+done
 
 # ------------------------------------------------------------------------------
 # Processing data
@@ -178,7 +160,7 @@ umi_tools whitelist --stdin ${OUTPUT}/R1_reads_mod_fil.fastq.gz \
 
 
 # PUT UMI and barcodes into read names based on generated whitelist
-# alternatively use whitelist_true.txt which contains the actual barcodes
+# TODO alternatively use whitelist_true.txt which contains the actual barcodes
 umi_tools extract --bc-pattern=NNNNNNNNCCCCCCCCCC \
                   --stdin ${OUTPUT}/R1_reads_mod_fil.fastq.gz \
                   --stdout ${OUTPUT}/R1_reads_extracted.fastq.gz \
@@ -236,7 +218,6 @@ STAR --runThreadN 16 \
      --sjdbOverhang 50 \
      --quantMode TranscriptomeSAM \
      --limitBAMsortRAM 20000000000;
-
 
 samtools sort \
   -@ 16 \
