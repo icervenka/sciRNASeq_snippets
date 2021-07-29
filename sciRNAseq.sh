@@ -74,7 +74,6 @@ while getopts "i:o:x:g:h" optname
 # - samtools
 # - fsubread package
 # - UMI tools
-# - genome and annotation files
 # - cutadapt
 # - bbtools (optionally)
 # ------------------------------------------------------------------------------
@@ -117,7 +116,10 @@ done
 # individual ones
 printf "%s\t%s\n" "file" "barcode" >> ${OUTPUT}/barcode_file.txt
 
-# initial value gives 5 bases
+# initial value 256 in decimal corresponds to 10000 in base 4 (corresponding to 4
+# DNA bases) to force the barcode to have 5 characters. this is sufficient to encode
+# almost 90000 files. If more files are present, initial value can be increased to
+# eg. 1024 for 6 characters.
 A=256
 for f in ${INPUT}/*R2.fastq.gz
 do
